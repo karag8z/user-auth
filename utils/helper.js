@@ -1,6 +1,7 @@
 const countriescode = require("../utils/country_code.json");
 const bcrypt = require("bcrypt");
 const User = require("../models/user");
+const mq = require("amqplib");
 const fs = require("fs");
 const multer = require("multer");
 const jwt = require("jsonwebtoken");
@@ -19,12 +20,12 @@ exports.checkUserPassword = async (inputpsw, userpsw) => {
   return await bcrypt.compare(inputpsw, userpsw);
 };
 
-exports.createRefreshToken = (userID) => {
-  return jwt.sign({ uid: userID }, process.env.REFRESH_SECRET, { expiresIn: process.env.REFRESH_EXPIRE });
+exports.createRefreshToken = (userID, isActive) => {
+  return jwt.sign({ uid: userID, isActive: isActive }, process.env.REFRESH_SECRET, { expiresIn: process.env.REFRESH_EXPIRE });
 };
 
-exports.createLoginJWT = (userID) => {
-  return jwt.sign({ uid: userID }, process.env.LOGIN_SECRET, { expiresIn: process.env.SIGN_EXPIRE });
+exports.createLoginJWT = (userID, isActive) => {
+  return jwt.sign({ uid: userID, isActive: isActive }, process.env.LOGIN_SECRET, { expiresIn: process.env.SIGN_EXPIRE });
 };
 
 exports.checkUserRefreshToken = async (userid, refreshToken) => {
@@ -45,7 +46,23 @@ exports.checkRefreshToken = async (token, uid) => {
   rKeys.forEach((rtoken) => {
     if (rtoken == token) result = true;
   });
-  return result;
+  return decoded;
+};
+
+exports.createEmailKey = (uid) => {
+  return jwt.sign({ uid: uid }, process.env.EMAIL_SECRET, { expiresIn: "30d" });
+};
+
+exports.createPasswordKey = (uid) => {
+  return jwt.sign({ uid: uid }, process.env.PASSWORD_SECRET, { expiresIn: "1d" });
+};
+
+exports.checkEmailToken = (token) => {
+  return jwt.verify(token, process.env.EMAIL_SECRET);
+};
+
+exports.checkPasswordToken = (token) => {
+  return jwt.verify(token, process.env.PASSWORD_SECRET);
 };
 
 exports.logoutAll = async (uid) => {
@@ -72,6 +89,21 @@ exports.multerStorage = (filepath) => {
       cb(null, file.fieldname);
     },
   });
+};
+
+exports.validatorError = (errors, next) => {
+  if (!errors.isEmpty()) {
+    const errorarray = errors.array();
+    const err = { name: "ValidationError", msg: errorarray[0].msg };
+    next(err);
+  }
+  next();
+};
+
+exports.mqSendMail = async (data) => {
+  const conn = await mq.connect(process.env.MQ_URL);
+  const ch = await conn.createChannel();
+  ch.sendToQueue("send-mail", Buffer.from(JSON.stringify(data)));
 };
 
 exports.cloudinaryUpload = async (filepath, uid) => {
