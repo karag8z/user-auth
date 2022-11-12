@@ -1,5 +1,6 @@
-const { validationResult, body } = require("express-validator");
-const { filterdialcode } = require("../utils/helper");
+const { validationResult, body, query } = require("express-validator");
+const { filterdialcode, validatorError } = require("../utils/helper");
+
 exports.validatorRegister = async (req, res, next) => {
   await body("email").exists().withMessage("email is required").isEmail().withMessage("value should be email").run(req),
     await body("password")
@@ -50,11 +51,7 @@ exports.validatorRegister = async (req, res, next) => {
       .run(req);
 
   const errors = validationResult(req);
-  if (!errors.isEmpty()) {
-    const data = errors.mapped();
-    return res.status(400).json({ data });
-  }
-  next();
+  validatorError(errors, next);
 };
 
 exports.validatorUpdate = async (req, res, next) => {
@@ -94,11 +91,7 @@ exports.validatorUpdate = async (req, res, next) => {
       .run(req);
 
   const errors = validationResult(req);
-  if (!errors.isEmpty()) {
-    const data = errors.mapped();
-    return res.status(400).json({ data });
-  }
-  next();
+  validatorError(errors, next);
 };
 
 exports.validatorLogin = async (req, res, next) => {
@@ -106,11 +99,7 @@ exports.validatorLogin = async (req, res, next) => {
     await body("password").exists().isLength({ min: 6 }).withMessage("invalid password").isLength({ max: 16 }).withMessage("invalid password").run(req);
 
   const errors = validationResult(req);
-  if (!errors.isEmpty()) {
-    const data = errors.mapped();
-    return res.status(400).json({ data });
-  }
-  next();
+  validatorError(errors, next);
 };
 
 exports.validatorPasswordChange = async (req, res, next) => {
@@ -129,19 +118,24 @@ exports.validatorPasswordChange = async (req, res, next) => {
     .run(req);
 
   const errors = validationResult(req);
-  if (!errors.isEmpty()) {
-    const data = errors.mapped();
-    return res.status(400).json({ data });
-  }
-  next();
+  validatorError(errors, next);
 };
 
 exports.validatorJWT = async (req, res, next) => {
+  await body("uid").isMongoId().withMessage("uid must be a mongoose object id").run(req);
   await body("refresh_token").isJWT().withMessage("refresh token must be a jwt type").run(req);
   const errors = validationResult(req);
-  if (!errors.isEmpty()) {
-    const data = errors.mapped();
-    return res.status(400).json({ data });
-  }
-  next();
+  validatorError(errors, next);
+};
+
+exports.validatorConfirmEmailToken = async (req, res, next) => {
+  await query("token").isJWT().withMessage("confirm token must be a jwt type").run(req);
+  const errors = validationResult(req);
+  validatorError(errors, next);
+};
+
+exports.validatorEMAIL = async (req, res, next) => {
+  await body("email").isEmail().withMessage("email must be a email type").run(req);
+  const errors = validationResult(req);
+  validatorError(errors, next);
 };

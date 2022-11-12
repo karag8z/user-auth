@@ -31,6 +31,7 @@ const User = new mongoose.Schema(
     cell: {
       type: Number,
       required: true,
+      unique: true,
     },
     avatar: {
       type: String,
