@@ -94,7 +94,7 @@ exports.multerStorage = (filepath) => {
 exports.validatorError = (errors, next) => {
   if (!errors.isEmpty()) {
     const errorarray = errors.array();
-    const err = { name: "ValidationError", msg: errorarray[0].msg };
+    const err = { name: "ValidationError", message: errorarray[0].msg };
     next(err);
   }
   next();
